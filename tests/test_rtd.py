@@ -27,6 +27,42 @@ def get_last_7_days():
         raise
 
 
+def test_custom_date_API(login_page, dashboard_page, rtd_page):
+    try:
+        # Step 1: Log in and navigate to the RTD page
+        test_login_and_navigate_to_rtd_page(login_page, dashboard_page, rtd_page)
+
+        # Step 2: Apply a custom date range (e.g., from 01-01-2025 to today's date)
+        print("Selecting a custom date range...")
+
+        # Get today's date formatted as DD-MM-YYYY
+        today = datetime.today().strftime('%d-%m-%Y')
+        print(f"Today's date: {today}")
+
+        # Set start day, month, and year manually (or dynamically)
+        start_day = "01"
+        month = "Jan"  # or dynamically set it as needed
+        year = "2025"
+
+        # Step 3: Call the select_custom_range method from the RTDPage
+        api_date_val = rtd_page.select_api_custom_range(start_day, month, year)  # You will pass the date dynamically here
+
+        # Step 4: Verify the displayed date range
+        start_date, end_date = rtd_page.get_displayed_date_range()
+
+        # Assert that the displayed date range matches the expected one (start date is the one set, and end date should be today)
+        assert start_date == "01-01-2025", f"Expected start date 01-04-2025, but found {start_date}"
+        assert end_date == today, f"Expected end date {today}, but found {end_date}"
+
+
+
+        print(f"Custom date range from 01-04-2025 to {today} applied successfully!")
+
+    except Exception as e:
+        print(f"Error during 'Custom Date Range Filter' Test: {e}")
+        raise
+
+
 def test_login_and_navigate_to_rtd_page(login_page, dashboard_page, rtd_page):
     """Test to log in, navigate to the dashboard, and validate the RTD page."""
 
@@ -192,44 +228,7 @@ def test_no_records_for_invalid_order_id(login_page, dashboard_page, rtd_page):
     except Exception as e:
         print(f"Error during 'No Records Found' Test for Invalid Order ID: {e}")
         raise
-# def test_amount_min_value_zero(login_page, dashboard_page, rtd_page, min_value=0):
-#     """Test to verify that the 'Min' value cannot be zero in the 'Amount' filter."""
-#
-#     try:
-#         # Step 1: Log in and navigate to the RTD page
-#         test_login_and_navigate_to_rtd_page(login_page, dashboard_page, rtd_page)
-#
-#         # Step 2: Open the filter menu
-#         rtd_page.open_filter_menu()
-#         print("Filter menu opened.")
-#
-#         # Step 3: Select the 'Amount' filter section
-#         rtd_page.select_amount_section()
-#         print("Amount section opened.")
-#
-#         # Step 4: Choose 'Select Range' condition
-#         print(f"Selecting 'Amount' filter and 'Select Range' condition with Min value: {min_value}...")
-#         rtd_page.select_amount_filter_condition("Select Range")  # Method to select 'Select Range' in the Amount filter
-#
-#         # Step 5: Set the 'Min' value dynamically and a valid 'Max' value
-#         print(f"Setting 'Min' value to {min_value}...")
-#         rtd_page.fill_amount_min_value(min_value)  # Set the dynamic 'Min' value
-#         rtd_page.fill_amount_max_value(100)  # Set a valid 'Max' value
-#         rtd_page.apply_filter()
-#
-#         # Step 6: Check for error message when 'Min' value is invalid
-#         error_message = rtd_page.get_min_value_toast_error_message()  # Method to retrieve error message
-#         assert "The Min Amount field must be greater than or equal to 0.1." in error_message, "Error message is not displayed as expected!"
-#
-#         print("✅ Min value cannot be zero, and error message is displayed.")
-#
-#         # Step 7: Verify that the table still shows 'Loading Data' or no data when invalid filter is applied
-#         rtd_page.verify_no_records_found()  # Check if the "No Records Found" message appears
-#         print("✅ 'No Records Found' message displayed for invalid filter.")
-#
-#     except Exception as e:
-#         print(f"Error during 'Amount Filter Min Value' Test: {e}")
-#         raise
+
 
 def test_amount_min_value_zero(login_page, dashboard_page, rtd_page, min_value=0):
     """Test to verify that the 'Min' value cannot be zero in the 'Amount' filter.

@@ -133,6 +133,137 @@ class RTDPage(BasePage):
             print(f"Error during 'select_last_7_days' action: {e}")
             raise
 
+    def select_api_custom_range(self, start_day: str, month: str, year: str):
+        """Select the custom range by clicking the Custom Range option,
+        selecting the month, selecting start and end dates, and applying the filter."""
+
+        try:
+            # Step 1: Click the date picker box to open the calendar
+            print("Opening the date picker...")
+            self.click(self.date_box)
+            print("Date picker opened.")
+
+            # Step 2: Select the Custom Range option
+            print("Waiting for 'Custom Range' option to appear...")
+            self.wait_for_element(self.custom_range_locator, timeout=10000)
+            sleep(10)  # You can adjust this based on the time it takes for the calendar to open
+            self.click(self.custom_range_locator)
+            print("Custom Range option selected.")
+
+            # Step 3: Wait and click the "From" month dropdown
+            print("Selecting the 'From' month dropdown...")
+            self.wait_for_element(self.from_month_dropdown_locator, timeout=10000)
+            self.click(self.from_month_dropdown_locator)
+            print("'From' month dropdown clicked.")
+
+            # Step 4: Select the "From" month dropdown (e.g., Jan, 2025)
+            month_locator = f"//div[@id='baseDropdown']//li[@aria-label='{month}, {year}']"
+            print(f"Locator for the 'From' month: {month_locator}")
+            self.wait_for_element(month_locator, timeout=10000)
+            self.click(month_locator)
+            print(f"Start month {month}, {year} selected.")
+
+            # Step 5: Select the start date (e.g., 1st Jan)
+            start_month = datetime.strptime(month, "%b").strftime(
+                "%m")  # Convert month to 2-digit format (01, 02, 03...)
+            start_date_locator = f'div[id="{year}-{start_month.zfill(2)}-{start_day.zfill(2)}"]'
+            print(f"Locator for start date: {start_date_locator}")
+
+            # Wait for the specific start date element to appear
+            self.wait_for_element(start_date_locator, timeout=10000)
+            self.click(start_date_locator)  # Click on the start date
+            print(f"Start date {start_day}-{month}-{year} selected.")
+
+            # Step 6: Select the "To" month dropdown
+            today = datetime.today()
+            current_month = today.strftime('%b')
+            current_year = today.strftime('%Y')
+
+            print("Selecting the 'To' month dropdown...")
+            self.wait_for_element(self.to_month_dropdown_locator, timeout=10000)
+            self.click(self.to_month_dropdown_locator)
+            print("'To' month dropdown clicked.")
+
+            # Step 7: Select the "To" month (current month)
+            month_locator = f"li#baseDropdown_3[aria-label='{current_month},  {current_year}']"  # this has two spaces in between
+            print(f"Locator for 'To' month: {month_locator}")
+            self.wait_for_element(month_locator, timeout=10000)
+            self.click(month_locator)
+            print(f"End month {current_month}, {current_year} selected.")
+
+            # Step 8: Select today's date as the end date
+            current_day = today.strftime('%d')  # Get today's day as a 2-digit number
+            end_date_locator = f'div[id="{current_year}-{today.month:02d}-{current_day.zfill(2)}"]'
+            print(f"Locator for end date: {end_date_locator}")
+
+            # Wait for the specific end date element (today's date) to appear
+            self.wait_for_element(end_date_locator, timeout=10000)
+            self.click(end_date_locator)  # Click on today's date
+            print(f"End date {current_day}-{current_month}-{current_year} selected.")
+
+            # Step 9: Click the 'Apply' button to apply the filter
+            print("Clicking 'Apply' button to apply the custom date range filter...")
+
+            # self.click(self.apply_button_locator)
+            def trigger_apply():
+                self.click(self.apply_button_locator)
+
+            first_page_response = self.intercept_response(
+                "/api/v1/order/forward/get/data",
+                trigger_action=trigger_apply
+            )
+
+            print(
+                f"✅ Custom date range from {start_day}-{month}-{year} to {current_day}-{current_month}-{current_year} selected and applied successfully.")
+
+            # API Interception
+            all_date_values = []  # List to store all UI risk across pages
+            target_ui_key = "order_date"
+            current_page = 1
+            total_pages = self.get_total_pages()  # Get the total number of pages
+            print(f"Total pages to process: {total_pages}")
+
+            while current_page <= total_pages:
+                print(f"\n📄 Processing page {current_page}/{total_pages}...")
+
+
+                # --- API Interception ---
+                if current_page == 1 and first_page_response:
+                    response = first_page_response
+                elif current_page > 1:
+                    next_button = self.page.locator(self.next_button_locator)
+                    if next_button.is_enabled():
+                        trigger = lambda: next_button.click()
+                        response = self.intercept_response("/api/v1/order/forward/get/data", trigger_action=trigger)
+                        # Wait for table to load
+                        time.sleep(5)
+                    else:
+                        print("❌ Next button not enabled despite expected more pages.")
+                        break
+                else:
+                    raise Exception("Unexpected pagination state.")
+
+                json_data = response.json()
+                #  get all the values within that extracted json
+                api_date_value = self.find_keys_recursively(json_data, target_ui_key)
+                all_date_values.extend(api_date_value)
+
+                print(f"✅ API values (page {current_page}): {all_date_values}")
+
+                # Exit loop if it's the last page
+                if current_page == total_pages:
+                    print("🏁 Reached the last page.")
+                    break
+
+                current_page += 1
+
+            print(f"\n📊 All API values: {all_date_values}")
+            return all_date_values
+
+        except Exception as e:
+            print(f"❌ Error during selecting custom date range: {e}")
+            raise
+
     def select_custom_range(self, start_day: str, month: str, year: str):
         """Select the custom range by clicking the Custom Range option,
         selecting the month, selecting start and end dates, and applying the filter."""
@@ -185,7 +316,7 @@ class RTDPage(BasePage):
             print("'To' month dropdown clicked.")
 
             # Step 7: Select the "To" month (current month)
-            month_locator = f"li#baseDropdown_2[aria-label='{current_month},  {current_year}']" # this has two spaces in between
+            month_locator = f"li#baseDropdown_3[aria-label='{current_month},  {current_year}']" # this has two spaces in between
             print(f"Locator for 'To' month: {month_locator}")
             self.wait_for_element(month_locator, timeout=10000)
             self.click(month_locator)
@@ -205,10 +336,10 @@ class RTDPage(BasePage):
             print("Clicking 'Apply' button to apply the custom date range filter...")
             self.click(self.apply_button_locator)
             print(
-                f"✅ Custom date range from {start_day}-{month}-{year} to {current_day}-{current_month}-{current_year} applied successfully.")
+                f"✅ Custom date range from {start_day}-{month}-{year} to {current_day}-{current_month}-{current_year} selected and applied successfully.")
 
         except Exception as e:
-            print(f"❌ Error during selecting custom date range: {e}")
+            print(f"❌ Error during applying and selecting custom date range: {e}")
             raise
 
     def get_displayed_date_range(self):
